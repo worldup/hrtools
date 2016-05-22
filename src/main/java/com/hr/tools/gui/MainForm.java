@@ -31,7 +31,7 @@ public class MainForm implements Observer{
     static MainForm mainForm;
     public static void main(String[] args) {
         JFrame frame = new JFrame("猎聘简历小助手");
-          mainForm=new MainForm();
+          mainForm=new MainForm(frame);
         frame.setContentPane(mainForm.mainPanel);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.pack();
@@ -41,7 +41,7 @@ public class MainForm implements Observer{
 
 
 
-    public MainForm() {
+    public MainForm(final JFrame frame) {
 
         actionButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -52,7 +52,7 @@ public class MainForm implements Observer{
                         String user_name=cookieMap.get("user_name");
 
                         userNameValueLabel.setText(URLDecoder.decode(user_name, "utf-8"));
-                         application=new Application(catalogField.getText(),Long.parseLong(intervalField.getText()),header,dataTextArea.getText());
+                         application=new Application(catalogField.getText(),Long.parseLong(intervalField.getText())*1000,header,dataTextArea.getText());
                          application.addObserver(mainForm);
                          new Thread(application).start();
                         actionButton.setEnabled(false);
@@ -67,7 +67,8 @@ public class MainForm implements Observer{
         });
         closeButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-
+                frame.dispose();
+                 System.exit(-1);
             }
         });
 

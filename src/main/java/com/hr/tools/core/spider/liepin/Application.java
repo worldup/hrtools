@@ -22,10 +22,10 @@ import static com.hr.tools.core.spider.liepin.RequestBuilder.*;
 public class Application extends Observable implements   Runnable {
     //设置执行标识,便于在界面启动和停止
     public  RunStatus runStatus = RunStatus.init;
-    public AtomicInteger totalPageCount;
-    public AtomicInteger finishedPageCount;
-    public AtomicInteger totalResumeCount;
-    public AtomicInteger finishedResumeCount;
+    public AtomicInteger totalPageCount=new AtomicInteger(0);
+    public AtomicInteger finishedPageCount=new AtomicInteger(0);
+    public AtomicInteger totalResumeCount=new AtomicInteger(0);
+    public AtomicInteger finishedResumeCount=new AtomicInteger(0);
 
     private String catalog;
     private String heads;
