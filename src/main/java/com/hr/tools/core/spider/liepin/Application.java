@@ -2,6 +2,7 @@ package com.hr.tools.core.spider.liepin;
 
 import com.google.common.collect.Maps;
 import com.hr.tools.core.spider.*;
+
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -10,15 +11,22 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Observable;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.hr.tools.core.spider.liepin.RequestBuilder.*;
 
 /**
  * Created by administrator on 16/5/20.
  */
-public class Application implements   Runnable{
+public class Application extends Observable implements   Runnable {
     //设置执行标识,便于在界面启动和停止
-    public static RunStatus runStatus = RunStatus.init;
+    public  RunStatus runStatus = RunStatus.init;
+    public AtomicInteger totalPageCount;
+    public AtomicInteger finishedPageCount;
+    public AtomicInteger totalResumeCount;
+    public AtomicInteger finishedResumeCount;
+
     private String catalog;
     private String heads;
     private String postDatas;
@@ -47,6 +55,9 @@ public class Application implements   Runnable{
             //解析有多少页结果
             Document document = requestResult.getResponse().parse();
             int pageCount = SearchResultPageParser.parseCount(document);
+            totalPageCount.set(pageCount);
+            totalResumeCount.set(pageCount*30);
+            notifyMetricsChange();
             //进行翻页操作
             for (int i = 0; i < pageCount; i++) {
                 //获取模拟点击页的post参数
@@ -89,26 +100,44 @@ public class Application implements   Runnable{
                             String res_id = resumeDetailIPageDocument.select("span[data-nick='res_id']").first().text();
                             String detailFileName = fileSearchName + "_page" + (i + 1) + "_res_" + res_id + ".html";
                             FileUtils.mergeAsFile(detailFileName, resumeDetailIPageDocument, workExpDetailDocument, Constants.ANCHOR_TAG);
+                            finishedResumeCount.addAndGet(1);
+                            notifyMetricsChange();
                         } catch (Exception e) {
                             e.printStackTrace();
+                            this.setChanged();
+                            this.notifyObservers(String.format("发生异常,信息如下:%s",e.getMessage()));
                         }
 
                     }
                 }
+                finishedPageCount.addAndGet(1);
+                notifyMetricsChange();
             }
+
+            runStatus = RunStatus.finished;
+            notifyMetricsChange();
 
         } catch (Exception e) {
             e.printStackTrace();
-
+            this.setChanged();
+            this.notifyObservers(String.format("发生异常,信息如下:%s",e.getMessage()));
         }
-        runStatus = RunStatus.finished;
 
 
     }
-
+    public void notifyMetricsChange(){
+        ApplicationMetrics applicationMetrics=new ApplicationMetrics();
+        applicationMetrics.setFinishedPageCount(finishedPageCount);
+        applicationMetrics.setFinishedResumeCount(finishedResumeCount);
+        applicationMetrics.setRunStatus(runStatus);
+        applicationMetrics.setTotalPageCount(totalPageCount);
+        applicationMetrics.setTotalResumeCount(totalResumeCount);
+        this.setChanged();
+        this.notifyObservers(applicationMetrics);
+    }
     public void run() {
-        while(Application.runStatus!=RunStatus.finished){
+
             go();
-        }
+
     }
 }
