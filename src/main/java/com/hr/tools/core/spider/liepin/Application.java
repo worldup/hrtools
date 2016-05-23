@@ -30,10 +30,12 @@ public class Application extends Observable implements   Runnable {
     private String catalog;
     private String heads;
     private String postDatas;
-    private long sleepSecond;
-    public Application(String catalog, long sleepSecond, String heads, String postDatas){
+    private long minSleepSecond;
+    private long maxSleepSecond;
+    public Application(String catalog, long minSleepSecond,long maxSleepSecond, String heads, String postDatas){
         this.catalog=catalog;
-        this.sleepSecond=sleepSecond;
+        this.minSleepSecond=minSleepSecond;
+        this.maxSleepSecond=maxSleepSecond;
         this.heads=heads;
         this.postDatas=postDatas;
     }
@@ -73,7 +75,7 @@ public class Application extends Observable implements   Runnable {
                 if (elements != null && elements.size() > 0) {
                     for (Element element : elements) {
                         try {
-                            Thread.sleep(sleepSecond);
+                            Thread.sleep(genRandomSleep(minSleepSecond,maxSleepSecond));
                             // String dataId = element.attr("data-id");
                             //获取简历链接
                             String href = element.attr("href");
@@ -102,6 +104,7 @@ public class Application extends Observable implements   Runnable {
                             FileUtils.mergeAsFile(detailFileName, resumeDetailIPageDocument, workExpDetailDocument, Constants.ANCHOR_TAG);
                             finishedResumeCount.addAndGet(1);
                             notifyMetricsChange();
+
                         } catch (Exception e) {
                             e.printStackTrace();
                             this.setChanged();
@@ -124,6 +127,9 @@ public class Application extends Observable implements   Runnable {
         }
 
 
+    }
+    private long genRandomSleep(long minSleepSecond,long maxSleepSecond){
+       return Math.round(Math.random()*(maxSleepSecond-minSleepSecond)+minSleepSecond) ;
     }
     public void notifyMetricsChange(){
         ApplicationMetrics applicationMetrics=new ApplicationMetrics();

@@ -4,9 +4,9 @@ import com.hr.tools.core.spider.liepin.Application;
 import com.hr.tools.core.spider.liepin.ApplicationMetrics;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.StringWriter;
 import java.net.URLDecoder;
 import java.util.Map;
 import java.util.Observable;
@@ -18,7 +18,7 @@ import java.util.Observer;
 public class MainForm implements Observer{
     private JButton actionButton;
     private JButton closeButton;
-    private JTextField intervalField;
+    private JTextField intervalMinField;
     private JTextField catalogField;
     private JTextArea headTextArea;
     private JPanel mainPanel;
@@ -27,6 +27,9 @@ public class MainForm implements Observer{
     private JLabel userNameLabel;
     private JLabel userNameValueLabel;
     private JLabel resumesInfoLabel;
+    private JTextField intervalMaxField;
+    private JLabel splitLabel;
+    private JLabel errMsgLabel;
     private Application application;
     static MainForm mainForm;
     public static void main(String[] args) {
@@ -52,7 +55,22 @@ public class MainForm implements Observer{
                         String user_name=cookieMap.get("user_name");
 
                         userNameValueLabel.setText(URLDecoder.decode(user_name, "utf-8"));
-                         application=new Application(catalogField.getText(),Long.parseLong(intervalField.getText())*1000,header,dataTextArea.getText());
+                        long minSleepSecond=30000;
+                        long maxSleepSecond=60000;
+                        errMsgLabel.setText("");
+                        try{
+                              minSleepSecond=Long.parseLong(intervalMinField.getText())*1000;
+                              maxSleepSecond=Long.parseLong(intervalMaxField.getText())*1000;
+                              if(maxSleepSecond<minSleepSecond){
+                                  errMsgLabel.setText("请确定时间区间格式设置正确");
+                                  return;
+                              }
+                        }catch(Exception e1){
+                            errMsgLabel.setText("请确定时间区间格式设置正确");
+
+                            return;
+                        }
+                         application=new Application(catalogField.getText(),minSleepSecond,maxSleepSecond,header,dataTextArea.getText());
                          application.addObserver(mainForm);
                          new Thread(application).start();
                         actionButton.setEnabled(false);
@@ -76,7 +94,6 @@ public class MainForm implements Observer{
     }
 
     public void update(Observable o, Object arg) {
-        System.out.println(o);
         if(o instanceof Application){
             if(arg instanceof ApplicationMetrics){
                 ApplicationMetrics metrics=(ApplicationMetrics)arg;
