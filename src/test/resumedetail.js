@@ -13,13 +13,19 @@ $(function () {
 
     var page = document.body, $side = $(".side", page), offsetTop, sideHeight, $CONFIG = window.$CONFIG || {};
     Resume.prototype.init = function () {
-        this.alertQrcode(), this.forwarding(), this.group(), this.keyrecommend(), this.attention(), this.mark(), this.isProper(), this.getContact(), this.getWorkList(), this.report(), this.linkJob(), this.message(), this.resumeDownload(), this.showHelp(), this.recommend(), this.limit(), this.attentionTip(), this.addEliteTips(), this.sameRecommend(), $("div.assistant a", $side).not(".disabled").hover(function () {
+        this.alertQrcode(), this.forwarding(), this.group(), this.keyrecommend(), this.attention(), this.mark(), this.btnGroupFixed(), this.isProper(), this.getContact(), this.getWorkList(), this.report(), this.linkJob(), this.message(), this.resumeDownload(), this.showHelp(), this.recommend(), this.limit(), this.attentionTip(), this.addEliteTips(), this.sameRecommend(), $("div.assistant a", $side).not(".disabled").hover(function () {
             var child = $(this).find("i");
             child.toggleClass(child.attr("data-hover"))
         }).bind("click", function () {
         }), function (sloter) {
             LT.Ads.fillSlot(sloter, sloter.attr("slots"))
         }($(".slots"))
+    }, Resume.prototype.btnGroupFixed = function () {
+        var $btn = $(".resume .resume-basic .buttons"), height = null;
+        $(window).on("scroll", function () {
+            var top = $btn.offset().top - 10, scrollTop = $(this).scrollTop();
+            height && height > scrollTop ? ($btn.removeClass("fixed"), height = null) : !height && scrollTop > top && ($btn.addClass("fixed"), height = top)
+        }).trigger("scroll")
     }, Resume.prototype.alertQrcode = function () {
         LT.File.Js.load("//concat.lietou-static.com/dev/h/pc/revs/v1/js/plugins/jquery.alertTs_1363e31b.js", function () {
             $("[data-selector='qrcode']", page).alertTs({
@@ -247,7 +253,8 @@ $(function () {
             })
         })
     }, Resume.prototype.getContactBuy = function (data) {
-        var _msg, _halfDiscount, coinType, res_buygold = parseInt(data.res_buygold, 10), res_goldcoin = parseInt(data.goldcoin, 10), res_lpCoin = parseInt(data.lp_coinTotal, 10), _data = {
+        var _msg, _halfDiscount, _data, lpCoinLack, coinType, res_buygold = parseInt(data.res_buygold, 10), res_goldcoin = parseInt(data.goldcoin, 10), res_lpCoin = parseInt(data.lp_coinTotal, 10);
+        switch (res_buygold = parseInt(data.res_buygold, 10), _data = {
             res_id_encode: $CONFIG.res_id,
             userc_id: $CONFIG.userc_id,
             buy_type: data.buy_type
@@ -262,8 +269,7 @@ $(function () {
                 },
                 cancel: !0
             })
-        };
-        switch (data.buy_type) {
+        }, data.buy_type) {
             case"1":
                 coinType = data.is_lpcoin_download === !0 ? "猎币" : "金币", _msg = '<p>打开此简历需要 <strong class="text-error">0</strong> 个' + coinType + '</p><p class="text-muted">您账户余额为' + res_goldcoin + "个金币，" + res_lpCoin + '个猎币</p><p class="text-error">提示：仅第一次打开需要花费金币或猎币</p><p class="text-error">本次下载使用了您领取的免费下载特权</p>', $.dialog.confirm(_msg, function () {
                     $.post("/resume/buyresume/", _data, function (data) {
@@ -321,9 +327,9 @@ $(function () {
             case"4":
                 if (data.is_lpcoin_download === !0) {
                     if (35 > res_lpCoin)return void lpCoinLack();
-                    _msg = '<p><strong> 打开此简历需要 <strong class="text-warning">35</strong> 个猎币</strong></p><p class="text-muted">您账户余额为' + res_goldcoin + "个金币，" + res_lpCoin + '个猎币</p><p class="text-error">提示：高级简历仅支持猎币下载</p>'
+                    _msg = '<p><strong> 打开此简历需要 <strong class="text-warning">' + res_buygold + '</strong> 个猎币</strong></p><p class="text-muted">您账户余额为' + res_goldcoin + "个金币，" + res_lpCoin + '个猎币</p><p class="text-error">提示：高级简历仅支持猎币下载</p>'
                 } else if (res_buygold > res_goldcoin) {
-                    if (35 > res_lpCoin)return void $.dialog({
+                    if (res_buygold > res_lpCoin)return void $.dialog({
                         icon: "question",
                         content: '<p>抱歉，您的金币及猎币余额不足！</p><p class="text-error">您可以通过与经理人互动获取金币奖励呦！</p>',
                         lock: !0,
@@ -332,7 +338,7 @@ $(function () {
                             window.location.href = window.location.href
                         }
                     });
-                    _msg = '<p>打开此简历需要 <strong class="text-error">35</strong> 个猎币</p><p class="text-muted">您账户余额为' + res_goldcoin + "个金币，" + res_lpCoin + '个猎币</p><p class="text-error">提示：仅第一次打开需要花费金币或猎币</p><p class="text-error">您的金币余额不足，默认使用您的猎币余额下载</p>'
+                    _msg = '<p>打开此简历需要 <strong class="text-error">' + res_buygold + '</strong> 个猎币</p><p class="text-muted">您账户余额为' + res_goldcoin + "个金币，" + res_lpCoin + '个猎币</p><p class="text-error">提示：仅第一次打开需要花费金币或猎币</p><p class="text-error">您的金币余额不足，默认使用您的猎币余额下载</p>'
                 } else _msg = '<p>打开此简历需要 <strong class="text-error">' + res_buygold + '</strong> 个金币</p><p class="text-muted">您账户余额为' + res_goldcoin + "个金币，" + res_lpCoin + '个猎币</p><p class="text-error">提示：仅第一次打开需要花费金币或猎币</p>';
                 $.dialog.confirm(_msg, function () {
                     $.post("/resume/buyresume/", _data, function (data) {
@@ -360,15 +366,23 @@ $(function () {
             }
         })
     }, Resume.prototype.getWorkList = function () {
-        var sign, keys, $workBox = $("#workexp_anchor");
-        return $workBox.length ? (sign = LT.String.encrypt($CONFIG.res_id, "jsencrypt"), keys = LT.String.getQuery("keys") || "", void $.ajax({
-            url: "/resume/showresumedetail/showresumeworkexps/?signs=" + LT.String.md5($CONFIG.res_id),
-            type: "POST",
-            data: {sign: sign, res_id_encode: $CONFIG.res_id, user_id: LT.User.user_id, keys: keys},
-            dataType: "html",
-            cache: !1,
-            success: function (data) {
-                $workBox.html(data)
+        var keys, $workBox = $("#workexp_anchor");
+        return $workBox.length ? (keys = LT.String.getQuery("keys") || "", void $.get("/resume/getdetail/").done(function (data) {
+            if (1 === data.flag) {
+                var resdata = "resdata_" + LT.String.md5(data.data.version);
+                window[resdata] = {
+                    version: data.data.version, res_id: $CONFIG.res_id, callback: function (r) {
+                        $.post("/resume/showresumedetail/showworkexps", {
+                            res_id_encode: $CONFIG.res_id,
+                            r: r,
+                            v: data.data.version,
+                            en: $CONFIG.en,
+                            keys: keys
+                        }, function (data) {
+                            $workBox.html(data)
+                        }, "html")
+                    }
+                }, $('<script type="text/javascript" src="//concat.lietou-static.com/dev/core/pc/v3/static/js/encrpt/' + data.data.url + '"></script>').appendTo("head")
             }
         })) : !1
     }, Resume.prototype.linkJob = function () {

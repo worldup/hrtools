@@ -1,5 +1,6 @@
 package com.hr.tools.gui;
 
+import com.hr.tools.core.spider.RunStatus;
 import com.hr.tools.core.spider.liepin.Application;
 import com.hr.tools.core.spider.liepin.ApplicationMetrics;
 
@@ -99,6 +100,10 @@ public class MainForm implements Observer{
                 ApplicationMetrics metrics=(ApplicationMetrics)arg;
                   metrics.getTotalResumeCount();
                  String info=String.format("总共找到简历 %d 份,已完成下载简历 %d 份",metrics.getTotalResumeCount().get(),metrics.getFinishedResumeCount().get());
+                RunStatus runStatus=metrics.getRunStatus();
+                if(runStatus.equals(RunStatus.finished)){
+                    actionButton.setEnabled(true);
+                }
                 resumesInfoLabel.setText(info);
             }
             else if(arg instanceof  String){

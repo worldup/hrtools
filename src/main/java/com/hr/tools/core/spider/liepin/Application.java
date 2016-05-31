@@ -90,6 +90,8 @@ public class Application extends Observable implements   Runnable {
                             String keys = MapUtils.getValue(paramMap, "keys", "");
                             datas.put("res_id_encode", resId);
                             datas.put("user_id", user_id);
+                            datas.put("r",Encry.v_12_detailjs(resId));
+                            datas.put("v","1.2");
                             datas.put("keys", keys);
                             datas.put("sign", Encry.encrypt(user_id, resId, "jsencrypt", "h.liepin.com", "liepin.com"));
                             //增加签名，根据简历编号进行md5加密
@@ -114,6 +116,7 @@ public class Application extends Observable implements   Runnable {
                     }
                 }
                 finishedPageCount.addAndGet(1);
+
                 notifyMetricsChange();
             }
 

@@ -1,8 +1,14 @@
 package com.hr.tools.core.spider.liepin;
 
 
+import jdk.nashorn.internal.runtime.regexp.RegExp;
+
+import java.net.URL;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Created by administrator on 16/5/20.
@@ -93,4 +99,10 @@ public class Encry {
         }
         return "";
     }
+     public  static String v_12_detailjs(String resumeId){
+        String hash=md5(resumeId);
+        String result=  hash.substring(0, 5) + md5("ehcac").substring(0, 6);
+        return  result;
+    }
+
 }

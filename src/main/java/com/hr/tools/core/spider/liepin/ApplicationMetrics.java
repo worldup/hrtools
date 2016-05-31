@@ -14,6 +14,7 @@ public class ApplicationMetrics {
       AtomicInteger totalResumeCount=new AtomicInteger(0);
       AtomicInteger finishedResumeCount=new AtomicInteger(0);
 
+
     public RunStatus getRunStatus() {
         return runStatus;
     }

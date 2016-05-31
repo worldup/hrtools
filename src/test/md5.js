@@ -1070,7 +1070,7 @@ LT.Namespace = function () {
     }, LT.User.requireLoginConfig);
     if (0 === arguments.length)options.callback = function () {
     }; else for (i = 0; i < arguments.length; i++)LT.Object.isObject(arguments[i]) ? LT.Object.extend(options, arguments[i]) : LT.Object.isFunction(arguments[i]) && (options.callback = arguments[i]);
-    LT.User.isLogin ? options.callback && options.callback.call(options) : (tplUrl = "//concat.lietou-static.com/dev/www/pc/revs/v1/tpls/user/pop_ajaxLogin_v1_90fde183.js", NodeTpl.get(tplUrl, options, function (d) {
+    LT.User.isLogin ? options.callback && options.callback.call(options) : (tplUrl = "//concat.lietou-static.com/dev/www/pc/revs/v1/tpls/user/pop_ajaxLogin_v1_2ecb84d0.js", NodeTpl.get(tplUrl, options, function (d) {
         var opt = {title: !1, content: d, lock: !0, padding: 0};
         options.close === !1 && (opt.dblclose = !1, opt.cancel = options.close), $.dialog(opt)
     }))
