@@ -12,14 +12,20 @@ import static com.hr.tools.core.spider.liepin.RequestBuilder.*;
  */
 public class RequestUtils {
     public static RequestResult execute(String url, String referUrl, String method, Map<String, String> headersMap, Map<String,String> postDataMaps){
+        return execute(url, referUrl, method, headersMap, postDataMaps,false);
+    }
+    public static RequestResult execute(String url, String referUrl, String method, Map<String, String> headersMap, Map<String,String> postDataMaps,boolean ajax){
         //建立连接
         Connection connection = Jsoup.connect(url).method(Connection.Method.valueOf(method));
         if(referUrl!=null&&referUrl.length()>0){
             connection.referrer(referUrl);
         }
-        for (Map.Entry<String, String> entry : headersMap.entrySet()) {
-            connection.header(entry.getKey(), entry.getValue());
+        if(headersMap!=null){
+            for (Map.Entry<String, String> entry : headersMap.entrySet()) {
+                connection.header(entry.getKey(), entry.getValue());
+            }
         }
+
         //构建请求数据
 
         if(postDataMaps!=null&&!postDataMaps.isEmpty()){
@@ -27,7 +33,8 @@ public class RequestUtils {
         }
         try {
             //进行请求
-            Connection.Response response = connection.execute();
+
+            Connection.Response response = connection.ignoreContentType(ajax).execute();
             Map<String, String> repCookies = response.cookies();
             Map<String,String> reBuildHeaderMap = reBuildHeader(headersMap, repCookies);
             MapUtils.mapCompare(headersMap, buildCookie(reBuildHeaderMap.get(COOKIE)));

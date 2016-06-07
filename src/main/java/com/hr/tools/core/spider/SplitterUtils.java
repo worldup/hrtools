@@ -1,6 +1,8 @@
 package com.hr.tools.core.spider;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.Maps;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +39,25 @@ public class SplitterUtils {
             stringBuilder.append(k+colSplit+v).append(rowSplit);
         }
         return stringBuilder.toString();
+    }
+    public static String replaceUrl(String url,Map<String ,String> map){
+        String[] parts= url.split("\\?",2);
+        if(parts!=null&&parts.length==2){
+            StringBuilder sb=new StringBuilder();
+            sb.append(parts[0]);
+            sb.append("?");
+            Map<String,String> originMap=Splitter.on("&").trimResults().withKeyValueSeparator("=").split(parts[1]);
+           Map<String,String> editableMap= Maps.newHashMap();
+            if(originMap!=null){
+                editableMap.putAll(originMap);
+                editableMap.putAll(map);
+            }
+            sb.append(Joiner.on("&").withKeyValueSeparator("=").join(editableMap));
+
+
+            return sb.toString()  ;
+        }
+        return url;
     }
     public static Map<String,String> getUrlParams(String url){
         String[] parts= url.split("\\?",2);

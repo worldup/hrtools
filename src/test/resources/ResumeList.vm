@@ -1,0 +1,75 @@
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<!-- CSS goes in the document HEAD or added to your external stylesheet -->
+<style type="text/css">
+    table.gridtable {
+        font-family: verdana, arial, sans-serif;
+        font-size: 11px;
+        color: #333333;
+        border-width: 1px;
+        border-color: #666666;
+        border-collapse: collapse;
+    }
+    table.gridtable th {
+        border-width: 1px;
+        padding: 8px;
+        border-style: solid;
+        border-color: #666666;
+        background-color: #dedede;
+    }
+
+    table.gridtable td {
+        border-width: 1px;
+        padding: 8px;
+        border-style: solid;
+        border-color: #666666;
+        background-color: #ffffff;
+    }
+</style>
+<body>
+
+
+<table class="gridtable">
+    <thead>
+    <tr>
+        <th>头像</th>
+        <th>姓名</th>
+        <th>头衔</th>
+        <th>城市</th>
+        <th>行业</th>
+    </tr>
+    </thead>
+    <tbody>
+        #foreach( $resume in ${resumes} )
+            #set($person=$resume.asJsonObject.getAsJsonObject("person"))
+
+        <tr  >
+            <td>
+
+                <a class="result-image"
+                   href= $person.link_nprofile_view_4>
+                    <img class="entity-img" src=${person.logo_result_base.media_picture_link}height="100"  width="100">
+                </a>
+            </td>
+            <td>
+                $person.fmt_name
+            </td>
+            <td>
+                $person.fmt_headline
+            </td>
+            <td>
+                $person.fmt_location
+            </td>
+            <td>
+                $person.fmt_industry
+            </td>
+        </tr>
+        #end
+
+    </tbody>
+</table>
+
+</body>
+</html>

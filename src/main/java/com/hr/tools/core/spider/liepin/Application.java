@@ -75,7 +75,7 @@ public class Application extends Observable implements   Runnable {
                 if (elements != null && elements.size() > 0) {
                     for (Element element : elements) {
                         try {
-                            Thread.sleep(genRandomSleep(minSleepSecond,maxSleepSecond));
+                            Thread.sleep(Utils.genRandomSleep(minSleepSecond,maxSleepSecond));
                             // String dataId = element.attr("data-id");
                             //获取简历链接
                             String href = element.attr("href");
@@ -131,9 +131,7 @@ public class Application extends Observable implements   Runnable {
 
 
     }
-    private long genRandomSleep(long minSleepSecond,long maxSleepSecond){
-       return Math.round(Math.random()*(maxSleepSecond-minSleepSecond)+minSleepSecond) ;
-    }
+
     public void notifyMetricsChange(){
         ApplicationMetrics applicationMetrics=new ApplicationMetrics();
         applicationMetrics.setFinishedPageCount(finishedPageCount);
