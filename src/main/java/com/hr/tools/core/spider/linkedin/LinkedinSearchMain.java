@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.hr.tools.core.spider.*;
+import com.hr.tools.core.spider.liepin.ApplicationMetrics;
 import com.hr.tools.core.spider.liepin.RequestBuilder;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.time.FastDateFormat;
@@ -16,25 +17,37 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.StringWriter;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by administrator on 16/6/7.
  */
-public class LinkedinSearchMain {
-    public static final String pageHead = "Host: www.linkedin.com\n" +
+public class LinkedinSearchMain extends Observable implements   Runnable {
+
+    //设置执行标识,便于在界面启动和停止
+    public  RunStatus runStatus = RunStatus.init;
+    public AtomicInteger totalPageCount=new AtomicInteger(0);
+    public AtomicInteger finishedPageCount=new AtomicInteger(0);
+    public AtomicInteger totalResumeCount=new AtomicInteger(0);
+    public AtomicInteger finishedResumeCount=new AtomicInteger(0);
+
+    private long minSleepSecond;
+    private long maxSleepSecond;
+    private String pageHead;
+    private String searchPageUrl;
+    private int resultCount;
+    static final String  fixedPageHead="Host: www.linkedin.com\n" +
             "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:46.0) Gecko/20100101 Firefox/46.0\n" +
             "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\n" +
             "Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3\n" +
-            "Accept-Encoding: gzip, deflate\n" +
+            "Accept-Encoding: gzip, deflate, br\n" +
             "X-Requested-With: XMLHttpRequest\n" +
-            "X-LinkedIn-traceDataContext: X-LI-ORIGIN-UUID=762xxGdrVRRQyUlbTysAAA==\n" +
+            "X-LinkedIn-traceDataContext: X-LI-ORIGIN-UUID=ovmxm0JBVxQwu0ROTisAAA==\n" +
             "X-IsAJAXForm: 1\n" +
-            "Referer: http://www.linkedin.com\n" +
-            "Cookie: lang=\"v=2&lang=en-us\"; JSESSIONID=\"ajax:2488950343934369266\"; bcookie=\"v=2&01b086e0-62a7-4238-8bbc-5ee3c4fef156\"; lidc=\"b=SB06:g=2:u=14:i=1465195546:t=1465281520:s=AQFFarDDgSN_ylO6Uqs6Q-ydozI4ozR5\"; visit=\"v=1&M\"; liap=true; li_at=AQEDARwizf4ATgOHAAABVSRvRekAAAFVJN0i6UsAIIItNq_uX6YwnTRtko97u_4RLAIJoFwKvp9u3Zp7ZT49ElqUDK9MYhlRH9aAAfIL49XwXrKubsycWJKQLmXznyREmZlOsuBFvRggxpYCTc6jMO71; oz_props_fetch_size1_472043006=3; wutan=5FFQIcxDR9fwtQd6TrDSnHmGMCFH0NKt/lB2vJUIFxI=; share_setting=PUBLIC; sdsc=1%3A1SZM1shxDNbLt36wZwCgPgvN58iw%3D; _lipt=0_2Zh6nDW7V7BoWYZzgTfPWr-k8zlzcAEmCgOXdGYfA6OzoJn5MqY3VlQToFImBZYBmIHCeZkyUCoI4bvr1u7LBPXy7nzb3KgL76X0vUYgaV56lzfTKM0xaoaTOkBtvPttntrpeO3PyKWNsBOfPocl_olGyiTH3nhyLwX_Dt32XocFhbI9-C81BQgYhhHFZSHHP_xUkdT9zR_tjYCDllXV_sdItJMldGsZjLnJwNKCgNM; _ga=GA1.2.1119067205.1465195287; _cb_ls=1; _chartbeat2=wn9fTBlJpcYCgFDp.1465195286976.1465195286987.1; _chartbeat4=t=DeWd7tCfVtcgCM26gAC5yq6kB226-9&E=2&x=0&c=0.04&y=21738&w=548\n" +
+            "Referer: https://www.linkedin.com\n" +
             "Connection: keep-alive";
     static final String detailHead = "Host: www.linkedin.com\n" +
             "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:46.0) Gecko/20100101 Firefox/46.0\n" +
@@ -43,17 +56,28 @@ public class LinkedinSearchMain {
             "Accept-Encoding: gzip, deflate, br\n" +
             "Connection: keep-alive";
     static Map<String, String> detailHeadMap = RequestBuilder.buildHeader(detailHead);
-    static Map<String, String> pageHeadMap = RequestBuilder.buildHeader(pageHead);
-    public static void searchDetail(JsonArray jsonArray,String preFileName,long minSleepSecond,long maxSleepSecond){
+    static Map<String, String> fixedPageHeadMap = RequestBuilder.buildHeader(fixedPageHead);
+
+    public   void searchDetail(JsonArray jsonArray,String preFileName,long minSleepSecond,long maxSleepSecond,String headCookie){
 
         if (jsonArray != null) {
 
             for (JsonElement element : jsonArray) {
                 try{
                     JsonObject person = element.getAsJsonObject().getAsJsonObject("person");
+                    if(person==null){
+                        this.setChanged();
+                        this.notifyObservers("工具执行出错,查询达到限制");
+                        continue;
+                    }
                     JsonElement pE = person.get("link_nprofile_view_headless");
                     if (pE == null) {
                         pE = person.get("link_nprofile_view_4");
+                    }
+                    if(pE==null){
+                        this.setChanged();
+                        this.notifyObservers("工具执行出错,查询达到限制");
+                        continue;
                     }
                     String profileUrl = pE.getAsString();
                     Connection connection = Jsoup.connect(profileUrl);
@@ -64,18 +88,22 @@ public class LinkedinSearchMain {
                             connection.header(entry.getKey(), entry.getValue());
                         }
                     }
-                    connection.header("Cookie", pageHeadMap.get("Cookie"));
+                    connection.header("Cookie", headCookie);
                     Document document = connection.get();
                     FileUtils.saveAsFile(preFileName+"_person_"+person.get("fmt_name")+".html",document.toString());
                     Thread.sleep(Utils.genRandomSleep(minSleepSecond,maxSleepSecond));
                 }catch (Exception e){
+                    this.setChanged();
+                    this.notifyObservers("工具执行出错,查询达到限制->"+e.getMessage());
                     e.printStackTrace();
                 }
+                finishedResumeCount.addAndGet(1);
+                notifyMetricsChange();
             }
 
         }
     }
-    public static JsonArray searchPage(String searchPageUrl) throws Exception {
+    public static JsonArray searchPage(String searchPageUrl,Map<String,String> pageHeadMap) throws Exception {
 
 
         RequestResult requestResult = RequestUtils.execute(searchPageUrl, null, "GET", pageHeadMap, null, true);
@@ -87,24 +115,37 @@ public class LinkedinSearchMain {
         JsonArray jsonArray = jsonObject.getAsJsonObject("content").getAsJsonObject("page").getAsJsonObject("voltron_unified_search_json").getAsJsonObject("search").getAsJsonArray("results");
         return jsonArray;
     }
-
-    public static void main(String[] args) throws Exception {
-        long minSleepSecond=10000;
-        long maxSleepSecond=20000;
+    public LinkedinSearchMain(long minSleepSecond,long maxSleepSecond,String pageHead,String searchPageUrl,int resultCount){
+        this.minSleepSecond=minSleepSecond;
+        this.maxSleepSecond=maxSleepSecond;
+        this.pageHead=pageHead;
+        this.searchPageUrl=searchPageUrl;
+        this.resultCount=resultCount;
+    }
+    public   void go(){
         Properties p = new Properties();
+        Map<String,String> headMap=RequestBuilder.buildHeader(pageHead);
+        String headCookie=headMap.get("Cookie")==null?headMap.get("cookie"):headMap.get("Cookie");
+        fixedPageHeadMap.put("Cookie",headCookie);
+        Map<String, String> pageHeadMap = fixedPageHeadMap;
         p.put("file.resource.loader.class", "org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader");
         Velocity.init(p);
         VelocityContext context = new VelocityContext();
-        String searchPageUrl = "http://www.linkedin.com/vsearch/pj?type=people&keywords=产品总监&orig=FCTD&rsid=4720430061465210394796&pageKey=voltron_people_search_internal_jsp&search=Search&openFacets=N,G,CC&f_G=cn:0&rnd=1465210440506";
-        Map<String, String> map = new HashMap<String, String>();
+          Map<String, String> map = new HashMap<String, String>();
         Map<String,String> params=SplitterUtils.getUrlParams(searchPageUrl);
         String keywords= MapUtils.getString(params,"keywords","未指定关键字");
+        try {
+            keywords= URLDecoder.decode(keywords,"UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+        totalResumeCount.set(resultCount*10);
         String  dateFormatStr=FastDateFormat.getInstance("yyyyMMddHHmm").format(new Date());
-        for (int i = 1; i < 20; i++) {
+        for (int i = 1; i <= resultCount; i++) {
             try {
                 map.put("page_num", "" + i);
                 searchPageUrl = SplitterUtils.replaceUrl(searchPageUrl, map);
-                JsonArray jsonArray = searchPage(searchPageUrl);
+                JsonArray jsonArray = searchPage(searchPageUrl,pageHeadMap);
                 context.put("resumes", jsonArray);
                 Template template = Velocity.getTemplate("ResumeList.vm", "UTF-8");
                 StringWriter stringWriter = new StringWriter();
@@ -112,12 +153,50 @@ public class LinkedinSearchMain {
                 String preFileName=dateFormatStr+keywords+"_page"+i;
                 FileUtils.saveAsFile(preFileName+".html",stringWriter.toString());
                 Thread.sleep(Utils.genRandomSleep(minSleepSecond,maxSleepSecond));
-                searchDetail(jsonArray,preFileName,minSleepSecond,maxSleepSecond);
+                searchDetail(jsonArray,preFileName,minSleepSecond,maxSleepSecond,headCookie);
             }catch (Exception e){
+                this.setChanged();
+                this.notifyObservers("工具执行出错,查询达到限制->"+e.getMessage());
                 e.printStackTrace();
             }
+            finishedPageCount.addAndGet(1);
 
+            notifyMetricsChange();
         }
+        runStatus = RunStatus.finished;
+        notifyMetricsChange();
+    }
+    public void notifyMetricsChange(){
+        ApplicationMetrics applicationMetrics=new ApplicationMetrics();
+        applicationMetrics.setFinishedPageCount(finishedPageCount);
+        applicationMetrics.setFinishedResumeCount(finishedResumeCount);
+        applicationMetrics.setRunStatus(runStatus);
+        applicationMetrics.setTotalPageCount(totalPageCount);
+        applicationMetrics.setTotalResumeCount(totalResumeCount);
+        this.setChanged();
+        this.notifyObservers(applicationMetrics);
+    }
+    public static void main(String[] args) throws Exception {
+        long minSleepSecond=10000;
+        long maxSleepSecond=20000;
+        final String pageHead = "Host: www.linkedin.com\n" +
+                "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:46.0) Gecko/20100101 Firefox/46.0\n" +
+                "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\n" +
+                "Accept-Language: zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3\n" +
+                "Accept-Encoding: gzip, deflate\n" +
+                "X-Requested-With: XMLHttpRequest\n" +
+                "X-LinkedIn-traceDataContext: X-LI-ORIGIN-UUID=762xxGdrVRRQyUlbTysAAA==\n" +
+                "X-IsAJAXForm: 1\n" +
+                "Referer: http://www.linkedin.com\n" +
+                "Cookie: lang=\"v=2&lang=en-us\"; JSESSIONID=\"ajax:2488950343934369266\"; bcookie=\"v=2&01b086e0-62a7-4238-8bbc-5ee3c4fef156\"; lidc=\"b=SB06:g=2:u=14:i=1465195546:t=1465281520:s=AQFFarDDgSN_ylO6Uqs6Q-ydozI4ozR5\"; visit=\"v=1&M\"; liap=true; li_at=AQEDARwizf4ATgOHAAABVSRvRekAAAFVJN0i6UsAIIItNq_uX6YwnTRtko97u_4RLAIJoFwKvp9u3Zp7ZT49ElqUDK9MYhlRH9aAAfIL49XwXrKubsycWJKQLmXznyREmZlOsuBFvRggxpYCTc6jMO71; oz_props_fetch_size1_472043006=3; wutan=5FFQIcxDR9fwtQd6TrDSnHmGMCFH0NKt/lB2vJUIFxI=; share_setting=PUBLIC; sdsc=1%3A1SZM1shxDNbLt36wZwCgPgvN58iw%3D; _lipt=0_2Zh6nDW7V7BoWYZzgTfPWr-k8zlzcAEmCgOXdGYfA6OzoJn5MqY3VlQToFImBZYBmIHCeZkyUCoI4bvr1u7LBPXy7nzb3KgL76X0vUYgaV56lzfTKM0xaoaTOkBtvPttntrpeO3PyKWNsBOfPocl_olGyiTH3nhyLwX_Dt32XocFhbI9-C81BQgYhhHFZSHHP_xUkdT9zR_tjYCDllXV_sdItJMldGsZjLnJwNKCgNM; _ga=GA1.2.1119067205.1465195287; _cb_ls=1; _chartbeat2=wn9fTBlJpcYCgFDp.1465195286976.1465195286987.1; _chartbeat4=t=DeWd7tCfVtcgCM26gAC5yq6kB226-9&E=2&x=0&c=0.04&y=21738&w=548\n" +
+                "Connection: keep-alive";
+        String searchPageUrl = "http://www.linkedin.com/vsearch/pj?type=people&keywords=产品总监&orig=FCTD&rsid=4720430061465210394796&pageKey=voltron_people_search_internal_jsp&search=Search&openFacets=N,G,CC&f_G=cn:0&rnd=1465210440506";
+        int pageCount=10;
+        LinkedinSearchMain main=new LinkedinSearchMain(minSleepSecond, maxSleepSecond, pageHead, searchPageUrl, pageCount);
+         main.go();
+    }
 
+    public void run() {
+        go();
     }
 }
