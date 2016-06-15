@@ -6,6 +6,8 @@ import org.jsoup.nodes.Document;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
+import java.io.StringWriter;
 
 /**
  * Created by administrator on 16/5/20.
@@ -25,6 +27,19 @@ public class FileUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    public static String pureSaveFile(String fileName,String content){
+        String abFileName="";
+        try {
+            File file = new File(fileName);
+            FileWriter fw=new FileWriter(file);
+            fw.write(content);
+            fw.close();
+            abFileName=file.getAbsolutePath();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+       return abFileName;
     }
     public static void mergeAsFile(String fileName,Document parent,Document child,String anchor){
         //anchor="<div class="resume-work" id="workexp_anchor">"

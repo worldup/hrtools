@@ -13,7 +13,15 @@ public class ApplicationMetrics {
       AtomicInteger finishedPageCount=new AtomicInteger(0);
       AtomicInteger totalResumeCount=new AtomicInteger(0);
       AtomicInteger finishedResumeCount=new AtomicInteger(0);
+        AtomicInteger errorResumeCount=new AtomicInteger(0);
 
+    public AtomicInteger getErrorResumeCount() {
+        return errorResumeCount;
+    }
+
+    public void setErrorResumeCount(AtomicInteger errorResumeCount) {
+        this.errorResumeCount = errorResumeCount;
+    }
 
     public RunStatus getRunStatus() {
         return runStatus;

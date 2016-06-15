@@ -33,12 +33,16 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
     public AtomicInteger finishedPageCount=new AtomicInteger(0);
     public AtomicInteger totalResumeCount=new AtomicInteger(0);
     public AtomicInteger finishedResumeCount=new AtomicInteger(0);
-
+    public AtomicInteger errorResumeCount=new AtomicInteger(0);
     private long minSleepSecond;
     private long maxSleepSecond;
     private String pageHead;
     private String searchPageUrl;
+
+
+
     private int resultCount;
+     private Log log;
     static final String  fixedPageHead="Host: www.linkedin.com\n" +
             "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:46.0) Gecko/20100101 Firefox/46.0\n" +
             "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\n" +
@@ -58,16 +62,19 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
     static Map<String, String> detailHeadMap = RequestBuilder.buildHeader(detailHead);
     static Map<String, String> fixedPageHeadMap = RequestBuilder.buildHeader(fixedPageHead);
 
-    public   void searchDetail(JsonArray jsonArray,String preFileName,long minSleepSecond,long maxSleepSecond,String headCookie){
+    public   void searchDetail(int pageNum,JsonArray jsonArray,String preFileName,long minSleepSecond,long maxSleepSecond,String headCookie){
 
         if (jsonArray != null) {
-
+            int j=0;
             for (JsonElement element : jsonArray) {
+                j++;
+                log.info("开始执行第"+pageNum+"页,第"+j+"条");
                 try{
                     JsonObject person = element.getAsJsonObject().getAsJsonObject("person");
                     if(person==null){
                         this.setChanged();
-                        this.notifyObservers("工具执行出错,查询达到限制");
+                        errorResumeCount.addAndGet(1);
+                        log.info("工具执行出错,获取候选人信息失败");
                         continue;
                     }
                     JsonElement pE = person.get("link_nprofile_view_headless");
@@ -76,7 +83,8 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
                     }
                     if(pE==null){
                         this.setChanged();
-                        this.notifyObservers("工具执行出错,查询达到限制");
+                        errorResumeCount.addAndGet(1);
+                        log.info("工具执行出错,获取候选人信息失败");
                         continue;
                     }
                     String profileUrl = pE.getAsString();
@@ -90,12 +98,18 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
                     }
                     connection.header("Cookie", headCookie);
                     Document document = connection.get();
-                    FileUtils.saveAsFile(preFileName+"_person_"+person.get("fmt_name")+".html",document.toString());
-                    Thread.sleep(Utils.genRandomSleep(minSleepSecond,maxSleepSecond));
+
+                    String fileName=preFileName+"_person_"+person.get("fmt_name").hashCode()+".html";
+                    log.info("开始生成文件"+fileName);
+                    String fname=FileUtils.pureSaveFile(fileName,document.toString());
+                   // FileUtils.saveAsFile(preFileName+"_person_"+person.get("fmt_name")+".html",document.toString());
+                    long stime=Utils.genRandomSleep(minSleepSecond,maxSleepSecond);
+                    log.info("文件生成完毕,休息"+stime+"毫秒,文件绝对路径"+fname);
+                    Thread.sleep(stime);
                 }catch (Exception e){
-                    this.setChanged();
-                    this.notifyObservers("工具执行出错,查询达到限制->"+e.getMessage());
+                    errorResumeCount.addAndGet(1);
                     e.printStackTrace();
+                   log.info(e.getMessage());
                 }
                 finishedResumeCount.addAndGet(1);
                 notifyMetricsChange();
@@ -115,12 +129,13 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
         JsonArray jsonArray = jsonObject.getAsJsonObject("content").getAsJsonObject("page").getAsJsonObject("voltron_unified_search_json").getAsJsonObject("search").getAsJsonArray("results");
         return jsonArray;
     }
-    public LinkedinSearchMain(long minSleepSecond,long maxSleepSecond,String pageHead,String searchPageUrl,int resultCount){
+    public LinkedinSearchMain(Log log,long minSleepSecond,long maxSleepSecond,String pageHead,String searchPageUrl,int resultCount){
         this.minSleepSecond=minSleepSecond;
         this.maxSleepSecond=maxSleepSecond;
         this.pageHead=pageHead;
         this.searchPageUrl=searchPageUrl;
         this.resultCount=resultCount;
+        this.log=log;
     }
     public   void go(){
         Properties p = new Properties();
@@ -141,8 +156,10 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
         }
         totalResumeCount.set(resultCount*10);
         String  dateFormatStr=FastDateFormat.getInstance("yyyyMMddHHmm").format(new Date());
+        log.info("任务开始执行");
         for (int i = 1; i <= resultCount; i++) {
             try {
+                log.info("开始执行第"+i+"页");
                 map.put("page_num", "" + i);
                 searchPageUrl = SplitterUtils.replaceUrl(searchPageUrl, map);
                 JsonArray jsonArray = searchPage(searchPageUrl,pageHeadMap);
@@ -153,10 +170,10 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
                 String preFileName=dateFormatStr+keywords+"_page"+i;
                 FileUtils.saveAsFile(preFileName+".html",stringWriter.toString());
                 Thread.sleep(Utils.genRandomSleep(minSleepSecond,maxSleepSecond));
-                searchDetail(jsonArray,preFileName,minSleepSecond,maxSleepSecond,headCookie);
+                searchDetail(i,jsonArray,preFileName,minSleepSecond,maxSleepSecond,headCookie);
+                log.info("第"+i+"页执行完毕");
             }catch (Exception e){
-                this.setChanged();
-                this.notifyObservers("工具执行出错,查询达到限制->"+e.getMessage());
+                log.info("工具执行出错,查询达到限制->"+e.getMessage());
                 e.printStackTrace();
             }
             finishedPageCount.addAndGet(1);
@@ -173,6 +190,7 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
         applicationMetrics.setRunStatus(runStatus);
         applicationMetrics.setTotalPageCount(totalPageCount);
         applicationMetrics.setTotalResumeCount(totalResumeCount);
+        applicationMetrics.setErrorResumeCount(errorResumeCount);
         this.setChanged();
         this.notifyObservers(applicationMetrics);
     }
@@ -192,7 +210,8 @@ public class LinkedinSearchMain extends Observable implements   Runnable {
                 "Connection: keep-alive";
         String searchPageUrl = "http://www.linkedin.com/vsearch/pj?type=people&keywords=产品总监&orig=FCTD&rsid=4720430061465210394796&pageKey=voltron_people_search_internal_jsp&search=Search&openFacets=N,G,CC&f_G=cn:0&rnd=1465210440506";
         int pageCount=10;
-        LinkedinSearchMain main=new LinkedinSearchMain(minSleepSecond, maxSleepSecond, pageHead, searchPageUrl, pageCount);
+        Log log=new Log();
+        LinkedinSearchMain main=new LinkedinSearchMain(log,minSleepSecond, maxSleepSecond, pageHead, searchPageUrl, pageCount);
          main.go();
     }
 
